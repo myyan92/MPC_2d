@@ -1,6 +1,6 @@
 import os, sys
 import numpy as np
-from rollout_physbam import rollout_single, read_curve
+from physbam_python.rollout_physbam import rollout_single, read_curve
 from multiprocessing import Pool
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation

@@ -44,13 +44,7 @@ class MPPI(BaseMPC):
         w = np.exp(-losses+np.amin(losses))
         w = w / np.sum(w)
         actions = np.array(actions)
-        actions_polar = np.zeros_like(actions)
-        actions_polar[:,:,0]=np.linalg.norm(actions, axis=2)
-        actions_polar[:,:,1]=np.arctan2(actions[:,:,0], actions[:,:,1])
-        actions_polar = np.tensordot(w,actions_polar, axes=1)
-        actions = np.zeros_like(actions_polar)
-        actions[:,0]=actions_polar[:,0]*np.sin(actions_polar[:,1])
-        actions[:,1]=actions_polar[:,0]*np.cos(actions_polar[:,1])
+        actions = np.tensordot(w, actions, axes=1)
         return actions
 
     def plan(self, current):
@@ -68,12 +62,14 @@ class MPPI(BaseMPC):
             for i in range(len(node_dists)):
                 if (i==0 or node_dists[i] > node_dists[i-1]) and \
                    (i==len(node_dists)-1 or node_dists[i] > node_dists[i+1]):
-                    cand_nodes.append(i)
+                   if node_dists[i] > 0.01:
+                        cand_nodes.append(i)
         if prev_act is not None and prev_act[0] not in cand_nodes:
             cand_nodes.append(prev_act[0])
         print("number of candidate nodes: ", len(cand_nodes))
+        print("Candidate nodes:", cand_nodes)
+        print("distances:", [node_dists[c] for c in cand_nodes])
         cand_seq = []
-
         for node in cand_nodes:
             if prev_act is not None and node==prev_act[0]:
                 init_actions = self.heuristic(self.goal[node]-current[node], self.horizon, self.prev_init)
@@ -88,6 +84,7 @@ class MPPI(BaseMPC):
 
         losses = self.pool.starmap(self.parallel_plan_eval, [(current, self.goal, n, sa, prev_act)
                                                         for n,sa in cand_seq])
+        print("Losses for each cand node:", losses)
         idx = np.argmin(losses)
         final_act_seq = cand_seq[idx]
         self.prev_init = final_act_seq[1][self.execute_step:]
