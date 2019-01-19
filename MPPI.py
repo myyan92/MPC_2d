@@ -1,6 +1,5 @@
 import os, sys, pdb, time
 import numpy as np
-from multiprocessing import Pool
 from physbam_python.rollout_physbam import read_curve
 import matplotlib
 matplotlib.use('agg')
@@ -32,12 +31,6 @@ class MPPI(BaseMPC):
         if prev_init is not None:
             actions = np.concatenate([prev_init, actions], axis=0)
         return actions
-
-    def parallel_plan_eval(self, cur_state, goal_state, init_node, actions_arr, prev_act):
-        actions = [(init_node, action) for action in actions_arr]
-        term_state = self.execute(cur_state, actions, cg_limit=self.cg_limit)
-        loss = self.evaluate(term_state, goal_state, actions, prev_act)
-        return loss
 
     def aggregate(self, losses, actions):
         losses = np.array(losses)*self.inv_temperature
@@ -84,13 +77,23 @@ class MPPI(BaseMPC):
                 init_actions = self.heuristic(self.goal[node]-current[node], self.horizon)
             # generate action sequencies from heuristics and evaluate
             sampled_actions_arr = self.add_exploration(init_actions, self.population)
-            losses = self.pool.starmap(self.parallel_plan_eval, [(current, self.goal, node, sa, prev_act)
-                                                    for sa in sampled_actions_arr])
+            converted_actions = []
+            for sa in sampled_actions_arr:
+                converted_action = [(node, action) for action in sa]
+                converted_actions.append(converted_action)
+            term_states = self.mental_dynamics.execute_batch(current, converted_actions)
+            losses = [self.evaluate(term_state, self.goal, actions, prev_act)
+                      for term_state, actions in zip(term_states, converted_actions)]
             action_seq = self.aggregate(losses, sampled_actions_arr)
             cand_seq.append((node, action_seq))
 
-        losses = self.pool.starmap(self.parallel_plan_eval, [(current, self.goal, n, sa, prev_act)
-                                                        for n,sa in cand_seq])
+        converted_actions = []
+        for node, sa in cand_seq:
+            converted_action = [(node, action) for action in sa]
+            converted_actions.append(converted_action)
+        term_states = self.mental_dynamics.execute_batch(current, converted_actions)
+        losses = [self.evaluate(term_state, self.goal, actions, prev_act)
+                  for term_state, actions in zip(term_states, converted_actions)]
         print("Losses for each cand node:", losses)
         idx = np.argmin(losses)
         final_act_seq = cand_seq[idx]

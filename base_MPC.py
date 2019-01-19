@@ -1,16 +1,18 @@
 import os, sys, time
 import numpy as np
-from physbam_python.rollout_physbam import rollout_single, read_curve
 import argparse
-from multiprocessing import Pool
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import MPC_2d.dynamic_models
 import pdb
+
+
 class BaseMPC(object):
     def __init__(self, population, horizon, execute_step,
                  tolerance, max_iteration,
+                 mental_dynamics, real_dynamics,
                  explore_mode, node_selection, cg_limit,
                  explore_std_angle=0.0, explore_std_scale=0.0,
                  explore_std_zero=0.0, explore_std_one=0.0):
@@ -26,7 +28,20 @@ class BaseMPC(object):
         self.std_scale = explore_std_scale
         self.std_zero = explore_std_zero
         self.std_one = explore_std_one
-        self.pool = Pool(8)
+#        self.mental_dynamics = mental_dynamics()
+#        self.real_dynamics = real_dynamics()
+        if mental_dynamics == "physbam_2d":
+            self.mental_dynamics = MPC_2d.dynamic_models.physbam_2d()
+        elif mental_dynamics == "physbam_3d":
+            self.mental_dynamics = MPC_2d.dynamic_models.physbam_3d()
+        else:
+            raise ValueError("unrecognized mental dynamics type")
+        if real_dynamics == "physbam_2d":
+            self.real_dynamics = MPC_2d.dynamic_models.physbam_2d()
+        elif real_dynamics == "physbam_3d":
+            self.real_dynamics = MPC_2d.dynamic_models.physbam_3d()
+        else:
+            print("Warning: unrecognized real dynamics type")
 
     @staticmethod
     def EuclideanToTangent(curve):
@@ -75,21 +90,6 @@ class BaseMPC(object):
 #            loss += self.transient_loss(prev_action, actions[0])
         return loss
 
-    def execute(self, current, actions, cg_limit=200000):
-        """Execute action sequence and get end state.
-        Args:
-            current: (N,2) array representing the current state.
-            actions: A list of (Int, array) tuple, where the int is
-                the action node, and the array is 2d vector of action.
-        """
-        state = current
-        physbam_args = " -disable_collisions -stiffen_bending 100"
-        physbam_args = physbam_args + ' -cg_iterations %d' %(cg_limit)
-        # TODO: change physbam input, change physbam_python, and change this.
-        for ac in actions:
-            state = rollout_single(state, ac[0]+1, ac[1], frames=1,
-                                   physbam_args=physbam_args)
-        return state
 
     def heuristic(self, current, goal, prev_plan):
         """Propose a promising trajectory based on current and goal state,
@@ -154,12 +154,11 @@ class BaseMPC(object):
         dist = self.terminal_loss(self.start, self.goal)
         step = 0
         current = self.start
-        pool = Pool(8)
         while step < self.max_iteration and dist > self.tolerance:
             step_time=time.time()
             final_act_seq = self.plan(current)
             print(final_act_seq)
-            current = self.execute(current, final_act_seq)
+            current = self.real_dynamics.execute(current, final_act_seq)
             step += 1
             dist = self.terminal_loss(current, self.goal)
             print("step time: ", time.time()-step_time)
@@ -178,7 +177,7 @@ class BaseMPC(object):
         history=[self.start]
         current = self.start
         for act in self.act_history:
-            current = self.execute(current, [act])
+            current = self.real_dynamics.execute(current, [act])
             history.append(current)
 
         def animate(i):
@@ -195,10 +194,3 @@ class BaseMPC(object):
             writer = Writer(fps=24)
             ani.save(filename, writer=writer)
 
-    def __getstate__(self):
-        self_dict = self.__dict__.copy()
-        del self_dict['pool']
-        return self_dict
-
-    def __setstate__(self, state):
-        self.__dict__.update(state)
