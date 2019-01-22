@@ -5,4 +5,5 @@ VanillaMPC.tolerance = 0.001
 VanillaMPC.max_iteration = 30
 VanillaMPC.explore_std_angle = 0.2
 VanillaMPC.explore_std_scale = 0.2
-
+VanillaMPC.mental_dynamics = "physbam_3d"
+VanillaMPC.real_dynamics = "physbam_3d"

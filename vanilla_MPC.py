@@ -1,7 +1,6 @@
 import os, sys
 import numpy as np
-from physbam_python.rollout_physbam import rollout_single, read_curve
-from multiprocessing import Pool
+from physbam_python.rollout_physbam import read_curve
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from MPC_2d.base_MPC import BaseMPC
@@ -27,29 +26,29 @@ class VanillaMPC(BaseMPC):
         act = np.dot(T,act)
         return (node, act)
 
-    def parallel_plan_eval(self, cur_state, goal_state, horizon, prev_act):
-        state = cur_state
-        action = prev_act
-        act_seq = []
-        for t in range(horizon):
-            action = self.heuristic(state, goal_state, action)
-            state = self.execute(state, [action])
-            act_seq.append(action)
-        loss = self.evaluate(state, goal_state, act_seq, prev_act)
-        return loss, act_seq
-
     def plan(self, current):
         if self.act_history:
            prev_act = self.act_history[-1]
         else:
            prev_act = None
 
-        results = self.pool.starmap(self.parallel_plan_eval,
-            [(current, self.goal, self.horizon, prev_act) for _ in range(self.population)])
-        losses = [r[0] for r in results]
-        cand_seq = [r[1] for r in results]
+        cand_seqs = [[] for _ in range(self.population)]
+        states = [current for _ in range(self.population)]
+        actions = [prev_act for _ in range(self.population)]
+        for t in range(self.horizon):
+            next_actions = []
+            for s,a in zip(states, actions):
+                next_action = self.heuristic(s, self.goal, a)
+                next_actions.append([next_action])
+            for seq, na in zip(cand_seqs, next_actions):
+                seq.extend(na)
+            states = self.mental_dynamics.execute_batch(states, next_actions)
+            actions = [na[0] for na in next_actions]
+        losses = [self.evaluate(state, self.goal, actions, prev_act)
+                  for state, actions in zip(states, cand_seqs)]
+
         idx = np.argmin(losses)
-        final_act_seq = cand_seq[idx][:self.execute_step]
+        final_act_seq = cand_seqs[idx][:self.execute_step]
         self.act_history.extend(final_act_seq)
         print(final_act_seq)
         return final_act_seq
