@@ -86,7 +86,7 @@ class physbam_3d(object):
           the action node, and the array is 2d vector of action.
     """
     # transform actions
-    actions = [[ac[1][0], ac[1][1], float(ac[0])/state.shape[0]] for ac in actions]
+    actions = [[ac[1][0], ac[1][1], float(ac[0])/(state.shape[0]-1)] for ac in actions]
     actions = np.array(actions)
     state = rollout_single_3d(state, actions, physbam_args=self.physbam_args)
     return state

@@ -1,3 +1,4 @@
+# outdated. Do not trust
 VanillaMPC.population = 100
 VanillaMPC.horizon = 10
 VanillaMPC.execute_step = 2

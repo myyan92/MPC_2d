@@ -71,11 +71,11 @@ class BaseMPC(object):
         """Transient loss function (action cost)."""
         loss = 0
         if action[0] != prev_action[0]:
-            loss += 0.1   # need regrasp
+            loss += 1e-6   # need regrasp
         else:
             a1 = np.array(action[1])
             a2 = np.array(prev_action[1])
-            loss += np.linalg.norm(a1-a2)**2
+            loss += 0.05*np.linalg.norm(a1-a2)**2
         return loss
 
     def evaluate(self, term_state, goal_state, actions, prev_action):
@@ -127,8 +127,8 @@ class BaseMPC(object):
             first_order_direction = traj_direction[:,:,::-1]*np.array([-1.0, 1.0])
             first_order_direction /= np.linalg.norm(first_order_direction, axis=2, keepdims=True)
             actions = np.copy(init_actions)
-            actions += zero_order_noise / actions.shape[1]
-            first_order_sine_wave = np.cos(np.linspace(0, np.pi, actions.shape[1])) / actions.shape[1]
+            actions += zero_order_noise
+            first_order_sine_wave = np.cos(np.linspace(0, np.pi, actions.shape[1]))
             actions += first_order_noise * first_order_direction * first_order_sine_wave.reshape((1,-1,1))
         return actions
 
@@ -169,7 +169,8 @@ class BaseMPC(object):
         line_cur, = ax.plot(self.start[:,0], self.start[:,1])
         line_goal, = ax.plot(self.goal[:,0], self.goal[:,1])
         plt.axis('equal')
-        plt.axis([-6,6,-6,6])
+#        plt.axis([-6,6,-6,6])
+        plt.axis([0.0,1.0,-0.5,0.5])
 
         history=[self.start]
         current = self.start

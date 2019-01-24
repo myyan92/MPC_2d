@@ -1,3 +1,4 @@
+# this is for original scale of [-6,6]. not suitable for use in robot frame coordinate.
 MPPI.population = 30
 MPPI.horizon = 10
 MPPI.execute_step = 2

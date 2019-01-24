@@ -21,7 +21,7 @@ class MPPI(BaseMPC):
             horizon = horizon-prev_init.shape[0]
         scale = np.linalg.norm(err)
         angle = np.arctan2(err[0],err[1])
-        action_scale = [self.max_action for _ in range(horizon)]
+        action_scale = [self.max_action*0.85 for _ in range(horizon)]
         for i in range(len(action_scale)):
             action_scale[i] = min(action_scale[i],scale)
             scale -= action_scale[i]

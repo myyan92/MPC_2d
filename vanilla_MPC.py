@@ -15,12 +15,12 @@ class VanillaMPC(BaseMPC):
         if prev_act is not None:
             dist[prev_act[0]-1] *= 2  # encourange higher probability to sample smooth sequence
             # could also add interpolation between current action and previous action
-        prob = np.exp(dist*5) / np.sum(np.exp(dist*5))
-        node = np.random.choice(len(prob), p=prob)+1  # node is 1-based
-        act = (goal[node-1,:]-current[node-1,:])
-        act *= min(1.0, 0.15/np.linalg.norm(act))
+        prob = np.exp(dist*50) / np.sum(np.exp(dist*50))
+        node = np.random.choice(len(prob), p=prob)
+        act = (goal[node,:]-current[node,:])
+        act *= min(1.0, self.max_action/np.linalg.norm(act))
         # add noise to act
-        scale = np.random.uniform(0.8,1.2)
+        scale = np.random.uniform(0.7,1.0)
         angle = np.random.randn()*0.2  # std about 12 degree
         T = np.array([[np.cos(angle), np.sin(angle)],[-np.sin(angle), np.cos(angle)]])*scale
         act = np.dot(T,act)
