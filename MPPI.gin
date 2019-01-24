@@ -11,5 +11,8 @@ MPPI.explore_std_zero = 0.3
 MPPI.explore_std_one = 0.2
 MPPI.max_action = 0.1
 MPPI.inv_temperature = 10.0
-MPPI.mental_dynamics = "physbam_2d"
+MPPI.mental_dynamics = "neural" # "physbam_2d"
 MPPI.real_dynamics = "physbam_2d"
+
+neural_sim.model_type="LSTM"
+neural_sim.snapshot="/scr-ssd/mengyuan/neural_simulator/LSTM/model-34"

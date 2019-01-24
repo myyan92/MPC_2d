@@ -13,7 +13,7 @@ class BaseMPC(object):
     def __init__(self, population, horizon, execute_step,
                  tolerance, max_iteration,
                  mental_dynamics, real_dynamics,
-                 explore_mode, node_selection, cg_limit, max_action,
+                 explore_mode, node_selection, max_action,
                  explore_std_angle=0.0, explore_std_scale=0.0,
                  explore_std_zero=0.0, explore_std_one=0.0):
         self.population = population
@@ -23,18 +23,17 @@ class BaseMPC(object):
         self.max_iteration = max_iteration
         self.explore_mode = explore_mode
         self.node_selection = node_selection
-        self.cg_limit = cg_limit
         self.max_action = max_action
         self.std_angle = explore_std_angle
         self.std_scale = explore_std_scale
         self.std_zero = explore_std_zero
         self.std_one = explore_std_one
-#        self.mental_dynamics = mental_dynamics()
-#        self.real_dynamics = real_dynamics()
         if mental_dynamics == "physbam_2d":
             self.mental_dynamics = MPC_2d.dynamic_models.physbam_2d()
         elif mental_dynamics == "physbam_3d":
             self.mental_dynamics = MPC_2d.dynamic_models.physbam_3d()
+        elif mental_dynamics == "neural":
+            self.mental_dynamics = MPC_2d.dynamic_models.neural_sim()
         else:
             raise ValueError("unrecognized mental dynamics type")
         if real_dynamics == "physbam_2d":

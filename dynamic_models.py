@@ -108,10 +108,24 @@ class physbam_3d(object):
     pool.join()
     return states
 
+
+import tensorflow as tf
+from neural_simulator.model_wrapper import Model
+
+
 @gin.configurable
 class neural_sim(object):
-  def __init__(self, model):
-    pass
+  def __init__(self, model_type, snapshot):
+    self.start = tf.placeholder(tf.float32, shape=[None, 128, 2])
+    self.action = tf.placeholder(tf.float32, shape=[None, 128, 2])
+
+    tf_config = tf.ConfigProto()
+    tf_config.gpu_options.allow_growth=True
+    self.sess = tf.Session(config=tf_config)
+    self.model = Model(model_type)  #load pretrained weights
+    self.model.build(input=self.start, action=self.action)
+    self.sess.run(tf.global_variables_initializer())
+    self.model.load(self.sess, snapshot)
 
   def execute(self, state, actions):
     onehot_actions = []
@@ -119,27 +133,31 @@ class neural_sim(object):
       onehot_action = np.zeros_like(state)
       onehot_action[ac[0],:] = ac[1]
       onehot_actions.append(onehot_action)
-    #run model
-    pass
+    for ac in onehot_actions:
+      state = self.model.predict_single(self.sess, state, ac)
+    return state
 
-class bla(object):
-    def __init__(self):
-        self.sim = physbam_2d()
+  def execute_batch(self, state, actions):
+    if isinstance(state, list):
+        assert(len(state)==len(actions))
+    else:
+        assert(state.ndim==2)
+        state = [state for a in actions]
+    state = np.array(state)
+    onehot_actions = []
+    num_steps = len(actions[0]) # assume it's the same for each
+    for t in range(num_steps):
+      onehot_ac = np.zeros_like(state)
+      for i,action in enumerate(actions):
+        onehot_ac[i,action[t][0],:] = action[t][1]
+      onehot_actions.append(onehot_ac)
+    for ac in onehot_actions:
+      state = self.model.predict_batch(self.sess, state, ac)
+    return state
 
-    def call(self):
-        state = np.zeros((64,2))
-        actions = [[( 0,np.zeros((2,)) )]]
-        self.sim.execute_batch(state, actions)
 
 if __name__=='__main__':
-    b=bla()
-    b.call()
-
-#    sc = physbam_2d()
-#    state = np.zeros((64,2))
-#    actions = [[( 0,np.zeros((2,)) )]]
-#    sc.execute_batch(state, actions)
-#    x=[physbam_2d(), physbam_2d(), physbam_2d()]
-#    p=Pool(3)
-#    filled_f=partial(physbam_2d.execute, state=state, actions=actions)
-#    print(p.map(filled_f, x))
+    sc = physbam_2d()
+    state = np.zeros((64,2))
+    actions = [[( 0,np.zeros((2,)) )]]
+    sc.execute_batch(state, actions)
