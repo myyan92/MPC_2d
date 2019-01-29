@@ -88,7 +88,7 @@ class physbam_3d(object):
     # transform actions
     actions = [[ac[1][0], ac[1][1], float(ac[0])/(state.shape[0]-1)] for ac in actions]
     actions = np.array(actions)
-    state = rollout_single_3d(state, actions, physbam_args=self.physbam_args)
+    state = rollout_single_3d(state, actions, physbam_args=' -dt 1e-3 ' + self.physbam_args)
     return state
 
   def execute_batch(self, state, actions):
@@ -116,13 +116,13 @@ from neural_simulator.model_wrapper import Model
 @gin.configurable
 class neural_sim(object):
   def __init__(self, model_type, snapshot):
-    self.start = tf.placeholder(tf.float32, shape=[None, 128, 2])
-    self.action = tf.placeholder(tf.float32, shape=[None, 128, 2])
+    self.start = tf.placeholder(tf.float32, shape=[None, 64, 2])
+    self.action = tf.placeholder(tf.float32, shape=[None, 64, 2])
 
     tf_config = tf.ConfigProto()
     tf_config.gpu_options.allow_growth=True
     self.sess = tf.Session(config=tf_config)
-    self.model = Model(model_type)  #load pretrained weights
+    self.model = Model(model_type)
     self.model.build(input=self.start, action=self.action)
     self.sess.run(tf.global_variables_initializer())
     self.model.load(self.sess, snapshot)
@@ -138,7 +138,7 @@ class neural_sim(object):
     return state
 
   def execute_batch(self, state, actions):
-    if isinstance(state, list):
+    if isinstance(state, list) or state.ndim==3:
         assert(len(state)==len(actions))
     else:
         assert(state.ndim==2)
