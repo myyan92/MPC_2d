@@ -126,8 +126,13 @@ class neural_sim(object):
     self.model.build(input=self.start, action=self.action)
     self.sess.run(tf.global_variables_initializer())
     self.model.load(self.sess, snapshot)
+#    print("Warning: This model is hacked to work with state and action in robot coordinate.")
+#    print("It will convert input state and action to fit the distribution of training data")
 
   def execute(self, state, actions):
+#    state = state*np.array([-1.0, 1.0])+np.array([0.5, 0.0])
+#    actions = [(a[0], np.array([-a[1][0], a[1][1]])) for a in actions]
+
     onehot_actions = []
     for ac in actions:
       onehot_action = np.zeros_like(state)
@@ -135,6 +140,7 @@ class neural_sim(object):
       onehot_actions.append(onehot_action)
     for ac in onehot_actions:
       state = self.model.predict_single(self.sess, state, ac)
+#    state[:,0]=0.5-state[:,0]
     return state
 
   def execute_batch(self, state, actions):
@@ -144,6 +150,10 @@ class neural_sim(object):
         assert(state.ndim==2)
         state = [state for a in actions]
     state = np.array(state)
+
+#    state = state*np.array([-1.0, 1.0])+np.array([0.5, 0.0])
+#    actions = [[(a[0], np.array([-a[1][0], a[1][1]])) for a in action] for action in actions]
+
     onehot_actions = []
     num_steps = len(actions[0]) # assume it's the same for each
     for t in range(num_steps):
@@ -153,6 +163,7 @@ class neural_sim(object):
       onehot_actions.append(onehot_ac)
     for ac in onehot_actions:
       state = self.model.predict_batch(self.sess, state, ac)
+#    state[:,:,0]=0.5-state[:,:,0]
     return state
 
 
