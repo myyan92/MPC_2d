@@ -1,8 +1,8 @@
 import os, sys, time
 import numpy as np
 import argparse
-import matplotlib
-matplotlib.use('agg')
+#import matplotlib
+#matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import dynamics_inference.dynamic_models as dynamic_models

@@ -1,8 +1,8 @@
 import os, sys, pdb, time
 import numpy as np
 from physbam_python.rollout_physbam_2d import read_curve
-import matplotlib
-matplotlib.use('agg')
+#import matplotlib
+#matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from MPC_2d.base_MPC import BaseMPC
@@ -40,7 +40,7 @@ class MPPI(BaseMPC):
         actions = np.tensordot(w, actions, axes=1)
         return actions
 
-    def plan(self, current):
+    def plan(self, current, check_limit_fn=None):
         node_dists = np.linalg.norm(current-self.goal, axis=1)
         if self.node_selection == 'threshold':
             cand_nodes, = np.where(node_dists > np.amax(node_dists)*0.9)
@@ -91,7 +91,15 @@ class MPPI(BaseMPC):
         losses = [self.evaluate(term_state, self.goal, actions, self.prev_act)
                   for term_state, actions in zip(term_states, converted_actions)]
         print("Losses for each cand node:", losses)
-        idx = np.argmin(losses)
+        # filter actions out of worspace
+        minloss = np.amax(losses)
+        idx = np.argmax(losses)
+        for i, (seq, loss) in enumerate(zip(cand_seq, losses)):
+            action=np.concatenate([current[seq[0],:],seq[1][0]])
+            if check_limit_fn(action) and loss < minloss:
+                minloss = loss
+                idx = i
+
         final_act_seq = cand_seq[idx]
         self.prev_init = final_act_seq[1][self.execute_step:]
         final_act_seq = [(final_act_seq[0], ac) for ac in final_act_seq[1][:self.execute_step]]
