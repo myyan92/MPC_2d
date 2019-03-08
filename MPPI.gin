@@ -2,8 +2,6 @@
 MPPI.population = 30
 MPPI.horizon = 10
 MPPI.execute_step = 2
-MPPI.tolerance = 0.001
-MPPI.max_iteration = 80
 MPPI.explore_mode = 'spline'
 MPPI.node_selection = 'localMax'
 MPPI.explore_std_angle = 0.2
@@ -13,7 +11,6 @@ MPPI.explore_std_one = 0.2
 MPPI.max_action = 0.1
 MPPI.inv_temperature = 10.0
 MPPI.mental_dynamics = "neural" # "physbam_2d"
-MPPI.real_dynamics = "physbam_2d"
 
 neural_sim.model_type="LSTM"
 neural_sim.snapshot="/scr-ssd/mengyuan/neural_simulator/LSTM/model-34"

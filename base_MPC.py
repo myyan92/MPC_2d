@@ -5,22 +5,19 @@ import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import MPC_2d.dynamic_models
+import dynamics_inference.dynamic_models as dynamic_models
 import pdb
 
 
 class BaseMPC(object):
     def __init__(self, population, horizon, execute_step,
-                 tolerance, max_iteration,
-                 mental_dynamics, real_dynamics,
+                 mental_dynamics,
                  explore_mode, node_selection, max_action,
                  explore_std_angle=0.0, explore_std_scale=0.0,
                  explore_std_zero=0.0, explore_std_one=0.0):
         self.population = population
         self.horizon = horizon
         self.execute_step = execute_step
-        self.tolerance = tolerance
-        self.max_iteration = max_iteration
         self.explore_mode = explore_mode
         self.node_selection = node_selection
         self.max_action = max_action
@@ -29,19 +26,13 @@ class BaseMPC(object):
         self.std_zero = explore_std_zero
         self.std_one = explore_std_one
         if mental_dynamics == "physbam_2d":
-            self.mental_dynamics = MPC_2d.dynamic_models.physbam_2d()
+            self.mental_dynamics = dynamic_models.physbam_2d()
         elif mental_dynamics == "physbam_3d":
-            self.mental_dynamics = MPC_2d.dynamic_models.physbam_3d()
+            self.mental_dynamics = dynamic_models.physbam_3d()
         elif mental_dynamics == "neural":
-            self.mental_dynamics = MPC_2d.dynamic_models.neural_sim()
+            self.mental_dynamics = dynamic_models.neural_sim()
         else:
             raise ValueError("unrecognized mental dynamics type")
-        if real_dynamics == "physbam_2d":
-            self.real_dynamics = MPC_2d.dynamic_models.physbam_2d()
-        elif real_dynamics == "physbam_3d":
-            self.real_dynamics = MPC_2d.dynamic_models.physbam_3d()
-        else:
-            print("Warning: unrecognized real dynamics type")
 
     @staticmethod
     def EuclideanToTangent(curve):
@@ -81,10 +72,10 @@ class BaseMPC(object):
     def evaluate(self, term_state, goal_state, actions, prev_action):
         """Calls terminal_loss and transient_loss to evaluate the trajectory."""
         loss = self.terminal_loss(term_state, goal_state)
-        for i in range(1,len(actions)):
-            loss += self.transient_loss(actions[i-1], actions[i])
-        if prev_action is not None:
-            loss += self.transient_loss(prev_action, actions[0])
+#        for i in range(1,len(actions)):
+#            loss += self.transient_loss(actions[i-1], actions[i])
+#        if prev_action is not None:
+#            loss += self.transient_loss(prev_action, actions[0])
         return loss
 
 
@@ -139,56 +130,10 @@ class BaseMPC(object):
     def reset(self, start, goal):
         self.start = start
         self.goal = goal
-        self.act_history = []
-
-    def parallel_plan_eval(self, cur_state, goal_state, horizon, prev_act):
-        raise NotImplementedError()
+        self.prev_act = None
+        self.prev_init = None
 
     def plan(self):
         raise NotImplementedError()
 
-    def main_loop(self):
-        dist = self.terminal_loss(self.start, self.goal)
-        step = 0
-        current = self.start
-        while step < self.max_iteration and dist > self.tolerance:
-            step_time=time.time()
-            final_act_seq = self.plan(current)
-            print(final_act_seq)
-            current = self.real_dynamics.execute(current, final_act_seq)
-            step += 1
-            dist = self.terminal_loss(current, self.goal)
-            print("step time: ", time.time()-step_time)
-            print("remaining distance: ", dist)
-
-        print('stopped after %d steps' %(step))
-        print('final distance %f' %(dist))
-
-    def save_animation(self, filename=None):
-        fig, ax = plt.subplots()
-        line_cur, = ax.plot(self.start[:,0], self.start[:,1])
-        line_goal, = ax.plot(self.goal[:,0], self.goal[:,1])
-        plt.axis('equal')
-#        plt.axis([-6,6,-6,6])
-        plt.axis([0.0,1.0,-0.5,0.5])
-
-        history=[self.start]
-        current = self.start
-        for act in self.act_history:
-            current = self.real_dynamics.execute(current, [act])
-            history.append(current)
-
-        def animate(i):
-            line_cur.set_xdata(history[i][:,0])
-            line_cur.set_ydata(history[i][:,1])
-            return line_cur, line_goal
-
-        ani = animation.FuncAnimation(fig, animate, interval=1000,
-                frames=np.arange(1,len(self.act_history)+1))
-        if filename is None:
-            plt.show()
-        else:
-            Writer = animation.writers['ffmpeg']
-            writer = Writer(fps=24)
-            ani.save(filename, writer=writer)
 

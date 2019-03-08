@@ -1,6 +1,6 @@
 import os, sys
 import numpy as np
-from physbam_python.rollout_physbam import read_curve
+from physbam_python.rollout_physbam_2d import read_curve
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from MPC_2d.base_MPC import BaseMPC
@@ -27,14 +27,9 @@ class VanillaMPC(BaseMPC):
         return (node, act)
 
     def plan(self, current):
-        if self.act_history:
-           prev_act = self.act_history[-1]
-        else:
-           prev_act = None
-
         cand_seqs = [[] for _ in range(self.population)]
         states = [current for _ in range(self.population)]
-        actions = [prev_act for _ in range(self.population)]
+        actions = [self.prev_act for _ in range(self.population)]
         for t in range(self.horizon):
             next_actions = []
             for s,a in zip(states, actions):
@@ -44,30 +39,12 @@ class VanillaMPC(BaseMPC):
                 seq.extend(na)
             states = self.mental_dynamics.execute_batch(states, next_actions)
             actions = [na[0] for na in next_actions]
-        losses = [self.evaluate(state, self.goal, actions, prev_act)
+        losses = [self.evaluate(state, self.goal, actions, self.prev_act)
                   for state, actions in zip(states, cand_seqs)]
 
         idx = np.argmin(losses)
         final_act_seq = cand_seqs[idx][:self.execute_step]
-        self.act_history.extend(final_act_seq)
+        self.prev_act = final_act_seq[-1]
         print(final_act_seq)
         return final_act_seq
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('start', help="starting state txt file")
-    parser.add_argument('goal', help="goal state txt file")
-    parser.add_argument('--gin_config', default='', help="path to gin config file.")
-    parser.add_argument('--gin_bindings', action='append', help='gin bindings strings.')
-    args = parser.parse_args()
-
-    gin.parse_config_files_and_bindings([args.gin_config], args.gin_bindings)
-
-    start = read_curve(args.start)
-    goal = read_curve(args.goal)
-
-    planner = VanillaMPC()
-    planner.reset(start, goal)
-    planner.main_loop()
-
-    planner.save_animation('vis_control.mp4')
